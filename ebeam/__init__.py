@@ -246,14 +246,10 @@ class TunableWG(Waveguide):
     The behavior of tunable waveguides can be adjusted by modifying the `power` parameter.
 
     Model schematic:
-    ~~~~~~~~~~~~~~~~
-
-
+    ~~~~~~~~~~~~~~~
 
     0 ┌─────────┐ 1
       └─────────┘
-
-
 
     """
 
@@ -263,8 +259,8 @@ class TunableWG(Waveguide):
 
     def __init__(
         self,
-        length: float = 5e-6,
         f: ndarray = f,
+        length: float = 5e-6,
         power: float = 0e-3,
         TE_loss: int = 700,
         OID: int = 1,
@@ -274,7 +270,14 @@ class TunableWG(Waveguide):
         LUT_attrs_ = deepcopy(self.cls_attrs)
         LUT_attrs_["power"] = power
 
-        super().__init__(f, length, data_folder, filename, TE_loss, **LUT_attrs_)
+        super().__init__(
+            f,
+            length=length,
+            data_folder=data_folder,
+            filename=filename,
+            TE_loss=TE_loss,
+            **LUT_attrs_
+        )
         if OID in self.valid_OID:
             self.s = self.load_sparameters(length, data_folder, filename, TE_loss)
         else:
@@ -291,23 +294,19 @@ class Waveguide(Waveguide):
     Model schematic:
     ~~~~~~~~~~~~~~~~
 
-
-
     0 ┌─────────┐ 1
       └─────────┘
 
-
-
     """
 
-    cls_attrs = {"wg_length": 0e-6, "height": 220e-9, "width": 500e-9}
+    cls_attrs = {"length": 0e-6, "height": 220e-9, "width": 500e-9}
     valid_OID = [1, 2]
     ports = 2
 
     def __init__(
         self,
         f: ndarray = f,
-        wg_length: float = 5e-6,
+        length: float = 5e-6,
         height: float = 220e-9,
         width: float = 500e-9,
         TE_loss: int = 700,
@@ -321,18 +320,18 @@ class Waveguide(Waveguide):
         LUT_attrs_["width"] = width
 
         # length is not part of LUT attributes
-        del LUT_attrs_["wg_length"]
+        del LUT_attrs_["length"]
 
         super().__init__(
             f,
-            length=wg_length,
+            length=length,
             data_folder=data_folder,
             filename=filename,
             TE_loss=TE_loss,
             **LUT_attrs_
         )
         if OID in self.valid_OID:
-            self.s = self.load_sparameters(wg_length, data_folder, filename, TE_loss)
+            self.s = self.load_sparameters(length, data_folder, filename, TE_loss)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
 
