@@ -5,8 +5,10 @@ from copy import deepcopy
 from pathlib import Path
 import numpy as np
 from opics.globals import F as f
-from opics.components import componentModel, Waveguide
-from numpy import ndarray
+from opics.components import componentModel
+from opics.utils import LUT_reader
+from numpy import complex128, ndarray
+from pathlib2 import PosixPath
 
 datadir = Path(str(Path(__file__).parent)) / "data"
 
@@ -46,12 +48,19 @@ class BDC(componentModel):
         LUT_attrs_ = deepcopy(self.cls_attrs)
         LUT_attrs_["height"] = height
         LUT_attrs_["width"] = width
-        super().__init__(f, data_folder, filename, 4, "bdc_sparam", **LUT_attrs_)
+        super().__init__(
+            f=f,
+            data_folder=data_folder,
+            filename=filename,
+            nports=4,
+            sparam_attr="bdc_sparam",
+            **LUT_attrs_
+        )
         if OID in self.valid_OID:
             self.s = self.load_sparameters(data_folder, filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_BDC"
+        self.component_id = "Ebeam_BDC"
 
 
 class DC_temp(componentModel):
@@ -83,12 +92,19 @@ class DC_temp(componentModel):
 
         LUT_attrs_ = deepcopy(self.cls_attrs)
         LUT_attrs_["Lc"] = Lc
-        super().__init__(f, data_folder, filename, 4, "s-param", **LUT_attrs_)
+        super().__init__(
+            f=f,
+            data_folder=data_folder,
+            filename=filename,
+            nports=4,
+            sparam_attr="s-param",
+            **LUT_attrs_
+        )
         if OID in self.valid_OID:
             self.s = self.load_sparameters(data_folder, filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_DC"
+        self.component_id = "Ebeam_DC"
 
 
 class DC_halfring(componentModel):
@@ -138,12 +154,13 @@ class DC_halfring(componentModel):
         LUT_attrs_["thickness"] = thickness
         LUT_attrs_["width"] = width
 
-        super().__init__(f, data_folder, filename, 4, "s-param", **LUT_attrs_)
+        super().__init__(f=f, data_folder=data_folder, filename=filename,
+                         nports=4, sparam_attr="s-param", **LUT_attrs_)
         if OID in self.valid_OID:
             self.s = self.load_sparameters(data_folder, filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_DC_halfring"
+        self.component_id = "Ebeam_DC_halfring"
 
 
 class GC(componentModel):
@@ -178,13 +195,20 @@ class GC(componentModel):
         LUT_attrs_ = deepcopy(self.cls_attrs)
         LUT_attrs_["deltaw"] = deltaw
         LUT_attrs_["height"] = height
-        super().__init__(f, data_folder, filename, 2, "gc_sparam", **LUT_attrs_)
+        super().__init__(
+            f=f,
+            nports=2,
+            data_folder=data_folder,
+            filename=filename,
+            sparam_attr="gc_sparam",
+            **LUT_attrs_
+        )
         if OID in self.valid_OID:
             self.s = self.load_sparameters(data_folder, filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
 
-        self.componentID = "Ebeam_GC"
+        self.component_id = "Ebeam_GC"
 
 
 class Multimode(componentModel):
@@ -199,7 +223,7 @@ class Multimode(componentModel):
         elif OID in self.valid_OID and OID == 2:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
             self.s[1, 0] = self.s[0, 1] = -5 * np.ones((self.f.shape[0]))
-        self.componentID = "Ebeam_multimode"
+        self.component_id = "Ebeam_multimode"
 
 
 class Terminator(componentModel):
@@ -229,15 +253,15 @@ class Terminator(componentModel):
     def __init__(self, f=f, OID=1):
         data_folder = datadir / "ebeam_terminator_te1550"
         filename = "ebeam_terminator_te1550.npz"
-        super().__init__(f, data_folder, filename)
+        super().__init__(f=f, data_folder=data_folder, filename=filename)
         if OID in self.valid_OID:
-            self.s = self.load_sparameters(data_folder, filename)
+            self.s = self.load_sparameters(data_folder=data_folder, filename=filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_Terminator"
+        self.component_id = "Ebeam_Terminator"
 
 
-class TunableWG(Waveguide):
+class TunableWG(componentModel):
     """
     Waveguides are components that guide waves. Although these are individual components that can
     be adjusted for use, it is recommended to draw paths in KLayout and convert them to waveguides
@@ -262,30 +286,83 @@ class TunableWG(Waveguide):
         f: ndarray = f,
         length: float = 5e-6,
         power: float = 0e-3,
-        TE_loss: int = 700,
+        loss: int = 700,
         OID: int = 1,
     ) -> None:
+
         data_folder = datadir / "tunable_wg"
         filename = "wg_strip_tunable.xml"
         LUT_attrs_ = deepcopy(self.cls_attrs)
         LUT_attrs_["power"] = power
 
-        super().__init__(
-            f,
-            length=length,
-            data_folder=data_folder,
-            filename=filename,
-            TE_loss=TE_loss,
-            **LUT_attrs_
-        )
         if OID in self.valid_OID:
-            self.s = self.load_sparameters(length, data_folder, filename, TE_loss)
+            self.s = self.load_sparameters(
+                length=length, data_folder=data_folder, filename=filename, neff=None, ng=None, loss=loss)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_TunableWG"
+        self.component_id = "Ebeam_TunableWG"
+
+    def load_sparameters(
+        self, length: float, data_folder: PosixPath, filename: str, neff: float, ng: float, loss: int
+    ) -> ndarray:
+        """overrides read s_parameters"""
+
+        sfilename, _, _ = LUT_reader(data_folder, filename, self.componentParameters)
+        self.sparam_file = sfilename[-1]
+        filepath = data_folder / sfilename[-1]
+
+        # Read info from waveguide s-param file
+        with open(filepath, "r") as f:
+            coeffs = f.readline().split()
+
+        # Initialize array to hold s-params
+        temp_s_ = np.zeros((len(self.f), self.nports, self.nports), dtype=complex128)
+
+        alpha = loss / (20 * np.log10(np.exp(1)))
+
+        # calculate angular frequency from frequency
+        w = np.asarray(self.f) * 2 * np.pi
+
+        # calculate center wavelength, effective index, group index, group dispersion
+        lam0, ne, ng_, nd = (
+            float(coeffs[0]),
+            float(coeffs[1]),
+            float(coeffs[3]),
+            float(coeffs[5]),
+        )
+
+        if(neff):
+            ne = neff
+        if(ng):
+            ng = ng
+        else:
+            ng = ng_
+
+        # calculate angular center frequency
+        w0 = (2 * np.pi * self.C) / lam0
+
+        # calculation of K
+        K = (
+            2 * np.pi * ne / lam0
+            + (ng / self.C) * (w - w0)
+            - (nd * lam0**2 / (4 * np.pi * self.C)) * ((w - w0) ** 2)
+        )
+
+        # compute s-matrix from K and waveguide length
+        temp_s_[:, 0, 1] = temp_s_[:, 1, 0] = np.exp(
+            -alpha * length + (K * length * 1j)
+        )
+
+        s = temp_s_
+        self.ng_ = ng
+        self.alpha_ = alpha
+        self.ne_ = ne
+        self.nd_ = nd
+
+        return s
 
 
-class Waveguide(Waveguide):
+class Waveguide(componentModel):
     """
     Waveguides are components that guide waves. Although these are individual components that can
     be adjusted for use, it is recommended to draw paths in KLayout and convert them to waveguides
@@ -309,7 +386,7 @@ class Waveguide(Waveguide):
         length: float = 5e-6,
         height: float = 220e-9,
         width: float = 500e-9,
-        TE_loss: int = 700,
+        loss: int = 700,
         OID: int = 1,
     ) -> None:
         data_folder = datadir / "wg_integral_source"
@@ -327,15 +404,76 @@ class Waveguide(Waveguide):
             length=length,
             data_folder=data_folder,
             filename=filename,
-            TE_loss=TE_loss,
+            loss=loss,
             **LUT_attrs_
         )
+
         if OID in self.valid_OID:
-            self.s = self.load_sparameters(length, data_folder, filename, TE_loss)
+            self.s = self.load_sparameters(
+                length=length, data_folder=data_folder, filename=filename, neff=None, ng=None, loss=loss)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
 
-        self.componentID = "Ebeam_WG"
+        self.component_id = "Ebeam_WG"
+
+    def load_sparameters(
+        self, length: float, data_folder: PosixPath, filename: str, neff: float, ng: float, loss: int
+    ) -> ndarray:
+        """overrides read s_parameters"""
+
+        sfilename, _, _ = LUT_reader(data_folder, filename, self.componentParameters)
+        self.sparam_file = sfilename[-1]
+        filepath = data_folder / sfilename[-1]
+
+        # Read info from waveguide s-param file
+        with open(filepath, "r") as f:
+            coeffs = f.readline().split()
+
+        # Initialize array to hold s-params
+        temp_s_ = np.zeros((len(self.f), self.nports, self.nports), dtype=complex128)
+
+        alpha = loss / (20 * np.log10(np.exp(1)))
+
+        # calculate angular frequency from frequency
+        w = np.asarray(self.f) * 2 * np.pi
+
+        # calculate center wavelength, effective index, group index, group dispersion
+        lam0, ne, ng_, nd = (
+            float(coeffs[0]),
+            float(coeffs[1]),
+            float(coeffs[3]),
+            float(coeffs[5]),
+        )
+
+        if(neff):
+            ne = neff
+        if(ng):
+            ng = ng
+        else:
+            ng = ng_
+
+        # calculate angular center frequency
+        w0 = (2 * np.pi * self.C) / lam0
+
+        # calculation of K
+        K = (
+            2 * np.pi * ne / lam0
+            + (ng / self.C) * (w - w0)
+            - (nd * lam0**2 / (4 * np.pi * self.C)) * ((w - w0) ** 2)
+        )
+
+        # compute s-matrix from K and waveguide length
+        temp_s_[:, 0, 1] = temp_s_[:, 1, 0] = np.exp(
+            -alpha * length + (K * length * 1j)
+        )
+
+        s = temp_s_
+        self.ng_ = ng
+        self.alpha_ = alpha
+        self.ne_ = ne
+        self.nd_ = nd
+
+        return s
 
 
 class Y(componentModel):
@@ -376,12 +514,19 @@ class Y(componentModel):
         LUT_attrs_["width"] = width
 
         # print(LUT_attrs_)
-        super().__init__(f, data_folder, filename, 3, "y_sparam", **LUT_attrs_)
+        super().__init__(
+            f=f,
+            nports=3,
+            data_folder=data_folder,
+            filename=filename,
+            sparam_attr="y_sparam",
+            **LUT_attrs_
+        )
         if OID in self.valid_OID:
             self.s = self.load_sparameters(data_folder, filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_Y"
+        self.component_id = "Ebeam_Y"
 
 
 class Switch(componentModel):
@@ -402,7 +547,7 @@ class Switch(componentModel):
             self.s = self.load_sparameters(data_folder, filename)
         else:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
-        self.componentID = "Ebeam_switch"
+        self.component_id = "Ebeam_switch"
 
 
 component_factory = dict(
