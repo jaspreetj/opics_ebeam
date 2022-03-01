@@ -4,7 +4,7 @@
 from copy import deepcopy
 from pathlib import Path
 import numpy as np
-from opics.globals import f
+from opics.globals import F as f
 from opics.components import componentModel, Waveguide
 from numpy import ndarray
 
