@@ -550,6 +550,120 @@ class Switch(componentModel):
         self.component_id = "Ebeam_switch"
 
 
+class ebeam_wg_integral_1550(componentModel):
+    """
+    Waveguides are components that guide waves. Although these are individual components that can
+    be adjusted for use, it is recommended to draw paths in KLayout and convert them to waveguides
+    using the built-in SiEPIC features.
+
+    Model schematic:
+    ~~~~~~~~~~~~~~~~
+
+    0 ┌─────────┐ 1
+      └─────────┘
+
+    """
+
+    cls_attrs = {"wg_length": 0e-6, "wg_height": 220e-9, "wg_width": 500e-9}
+    valid_OID = [1, 2]
+    ports = 2
+
+    def __init__(
+        self,
+        f: ndarray = f,
+        wg_length: float = 5e-6,
+        wg_height: float = 220e-9,
+        wg_width: float = 500e-9,
+        loss: int = 700,
+        OID: int = 1,
+    ) -> None:
+        data_folder = datadir / "wg_integral_source"
+        filename = "wg_strip_lookup_table.xml"
+
+        LUT_attrs_ = deepcopy(self.cls_attrs)
+        LUT_attrs_["wg_height"] = wg_height
+        LUT_attrs_["wg_width"] = wg_width
+
+        # wg_length is not part of LUT attributes
+        del LUT_attrs_["wg_length"]
+
+        super().__init__(
+            f,
+            length=wg_length,
+            data_folder=data_folder,
+            filename=filename,
+            loss=loss,
+            **LUT_attrs_
+        )
+
+        if OID in self.valid_OID:
+            self.s = self.load_sparameters(
+                length=wg_length, data_folder=data_folder, filename=filename, neff=None, ng=None, loss=loss)
+        else:
+            self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
+
+        self.component_id = "Ebeam_WG"
+
+    def load_sparameters(
+        self, length: float, data_folder: PosixPath, filename: str, neff: float, ng: float, loss: int
+    ) -> ndarray:
+        """overrides read s_parameters"""
+
+        sfilename, _, _ = LUT_reader(data_folder, filename, self.componentParameters)
+        self.sparam_file = sfilename[-1]
+        filepath = data_folder / sfilename[-1]
+
+        # Read info from waveguide s-param file
+        with open(filepath, "r") as f:
+            coeffs = f.readline().split()
+
+        # Initialize array to hold s-params
+        temp_s_ = np.zeros((len(self.f), self.nports, self.nports), dtype=complex128)
+
+        alpha = loss / (20 * np.log10(np.exp(1)))
+
+        # calculate angular frequency from frequency
+        w = np.asarray(self.f) * 2 * np.pi
+
+        # calculate center wavelength, effective index, group index, group dispersion
+        lam0, ne, ng_, nd = (
+            float(coeffs[0]),
+            float(coeffs[1]),
+            float(coeffs[3]),
+            float(coeffs[5]),
+        )
+
+        if(neff):
+            ne = neff
+        if(ng):
+            ng = ng
+        else:
+            ng = ng_
+
+        # calculate angular center frequency
+        w0 = (2 * np.pi * self.C) / lam0
+
+        # calculation of K
+        K = (
+            2 * np.pi * ne / lam0
+            + (ng / self.C) * (w - w0)
+            - (nd * lam0**2 / (4 * np.pi * self.C)) * ((w - w0) ** 2)
+        )
+
+        # compute s-matrix from K and waveguide length
+        temp_s_[:, 0, 1] = temp_s_[:, 1, 0] = np.exp(
+            -alpha * length + (K * length * 1j)
+        )
+
+        s = temp_s_
+        self.ng_ = ng
+        self.alpha_ = alpha
+        self.ne_ = ne
+        self.nd_ = nd
+
+        return s
+
+
 component_factory = dict(
     BDC=BDC,
     DC_halfring=DC_halfring,
@@ -564,7 +678,7 @@ component_factory = dict(
     Y=Y,
     ebeam_y_1550=Y,
     ebeam_gc_te1550=GC,
-    ebeam_wg_integral_1550=Waveguide,
+    ebeam_wg_integral_1550=ebeam_wg_integral_1550,
 )
 
 components_list = list(component_factory.keys())
@@ -575,7 +689,7 @@ if __name__ == "__main__":
     import opics as op
 
     w = np.linspace(1.52, 1.58, 3) * 1e-6
-    f = op.c / w
+    f = op.C / w
     c = BDC(f=f)
     s = c.get_data()
 
