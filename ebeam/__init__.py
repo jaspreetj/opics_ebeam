@@ -4,7 +4,6 @@
 from copy import deepcopy
 from pathlib import Path
 import numpy as np
-from opics.globals import F as f
 from opics.components import componentModel
 from opics.utils import LUT_reader
 from numpy import complex128, ndarray
@@ -37,7 +36,7 @@ class BDC(componentModel):
 
     def __init__(
         self,
-        f: ndarray = f,
+        f: ndarray = None,
         height: float = 220e-9,
         width: float = 500e-9,
         OID: int = 1,
@@ -86,7 +85,7 @@ class DC_temp(componentModel):
     valid_OID = [1]
     ports = 4
 
-    def __init__(self, f=f, Lc=0, OID=1):
+    def __init__(self, f=None, Lc=0, OID=1):
         data_folder = datadir / "ebeam_dc_te1550"
         filename = "dc_map.xml"
 
@@ -136,7 +135,7 @@ class DC_halfring(componentModel):
 
     def __init__(
         self,
-        f: ndarray = f,
+        f: ndarray = None,
         CoupleLength: int = 0,
         gap: float = 100e-9,
         radius: float = 5e-6,
@@ -186,7 +185,7 @@ class GC(componentModel):
     ports = 2
 
     def __init__(
-        self, f: ndarray = f, deltaw: int = 0, height: float = 2.2e-07, OID: int = 1
+        self, f: ndarray = None, deltaw: int = 0, height: float = 2.2e-07, OID: int = 1
     ) -> None:
 
         data_folder = datadir / "gc_source"
@@ -215,7 +214,7 @@ class Multimode(componentModel):
     valid_OID = [1, 2]
     ports = 2
 
-    def __init__(self, f=f, OID=1):
+    def __init__(self, f=None, OID=1):
         super().__init__(f, "", "")
         if OID in self.valid_OID and OID == 1:
             self.s = np.zeros((self.f.shape[0], self.ports, self.ports))
@@ -250,7 +249,7 @@ class Terminator(componentModel):
     valid_OID = [1]
     ports = 2
 
-    def __init__(self, f=f, OID=1):
+    def __init__(self, f=None, OID=1):
         data_folder = datadir / "ebeam_terminator_te1550"
         filename = "ebeam_terminator_te1550.npz"
         super().__init__(f=f, data_folder=data_folder, filename=filename)
@@ -283,7 +282,7 @@ class TunableWG(componentModel):
 
     def __init__(
         self,
-        f: ndarray = f,
+        f: ndarray = None,
         length: float = 5e-6,
         power: float = 0e-3,
         loss: int = 700,
@@ -382,7 +381,7 @@ class Waveguide(componentModel):
 
     def __init__(
         self,
-        f: ndarray = f,
+        f: ndarray = None,
         length: float = 5e-6,
         height: float = 220e-9,
         width: float = 500e-9,
@@ -501,7 +500,7 @@ class Y(componentModel):
 
     def __init__(
         self,
-        f: ndarray = f,
+        f: ndarray = None,
         height: float = 220e-9,
         width: float = 500e-9,
         OID: int = 1,
@@ -536,7 +535,7 @@ class Switch(componentModel):
     valid_OID = [1]
     ports = 4
 
-    def __init__(self, f: ndarray = f, power: float = 0e-3, OID: int = 1) -> None:
+    def __init__(self, f: ndarray = None, power: float = 0e-3, OID: int = 1) -> None:
         data_folder = datadir / "2x2_switch"
         filename = "2x2_switch.xml"
 
@@ -570,7 +569,7 @@ class ebeam_wg_integral_1550(componentModel):
 
     def __init__(
         self,
-        f: ndarray = f,
+        f: ndarray = None,
         wg_length: float = 5e-6,
         wg_height: float = 220e-9,
         wg_width: float = 500e-9,
