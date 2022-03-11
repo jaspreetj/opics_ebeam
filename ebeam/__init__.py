@@ -7,7 +7,7 @@ import numpy as np
 from opics.components import componentModel
 from opics.utils import LUT_reader
 from numpy import complex128, ndarray
-from pathlib2 import PosixPath
+from pathlib import PosixPath
 
 datadir = Path(str(Path(__file__).parent)) / "data"
 
